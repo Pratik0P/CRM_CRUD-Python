@@ -1,0 +1,125 @@
+import requests
+import json
+
+AUTH_TOKEN = "1000.65353121fb9247d97fe19be12c1ee7f9.ee53538736251de5a06a3f93ac1915d5"
+API_URL = "https://www.zohoapis.in/crm/v2"
+
+class ZohoCRMConnector:
+    def __init__(self):
+        self.auth_token = AUTH_TOKEN
+        self.api_url = API_URL
+
+    def _get_headers(self):
+        return {
+            "Authorization": f"Zoho-oauthtoken {self.auth_token}",
+            "Content-Type": "application/json"
+        }
+
+    def create_record(self, module, data):
+        url = f"{self.api_url}/{module}"
+        response = requests.post(url, headers=self._get_headers(), json={"data": [data]})
+        response_json = response.json()
+        print(json.dumps(response_json, indent=2))
+        if response.status_code == 201 and "data" in response_json:
+            record_id = response_json["data"][0].get("details", {}).get("id")
+            if record_id:
+                print(f"Record created successfully! ID: {record_id}")
+                return record_id
+            else:
+                print("ID not found in response!")
+        else:
+            print("Error:", response_json.get("message", "Unknown error"))
+        return None
+
+    def read_record(self, module, record_id):
+        url = f"{self.api_url}/{module}/{record_id}"
+        response = requests.get(url, headers=self._get_headers())
+        response_json = response.json()
+        print(json.dumps(response_json, indent=2))
+        if response.status_code == 200 and "data" in response_json and response_json["data"]:
+            record = response_json["data"][0]
+            print(f"Record Found!\nFull Name: {record.get('Full_Name', '')}\nEmail: {record.get('Email', 'N/A')}")
+            return record
+        print("Error:", response_json.get("message", "No data found"))
+
+    def update_record(self, module, record_id, data):
+        url = f"{self.api_url}/{module}/{record_id}"
+        response = requests.put(url, headers=self._get_headers(), json={"data": [data]})
+        response_json = response.json()
+        print(json.dumps(response_json, indent=2))
+        if response.status_code == 200 and "data" in response_json:
+            print("Record updated successfully!")
+            return True
+        print("Error:", response_json.get("message", "Unknown error"))
+        return False
+
+    def delete_record(self, module, record_id):
+        url = f"{self.api_url}/{module}/{record_id}"
+        response = requests.delete(url, headers=self._get_headers())
+        response_json = response.json()
+        print(json.dumps(response_json, indent=2))
+        if response.status_code == 200 and "data" in response_json and response_json["data"][0]["status"] == "success":
+            print("Record deleted successfully!")
+            return True
+        print("Error:", response_json.get("message", "Unknown error"))
+        return False
+
+if __name__ == "__main__":
+    crm_connector = ZohoCRMConnector()
+    module = "Leads"
+
+    print("Welcome to Zoho CRM Manager!")
+
+    while True:
+        print("\nChoose an operation:")
+        print("1. Create a new record")
+        print("2. Read a record")
+        print("3. Update a record")
+        print("4. Delete a record")
+        print("5. Exit")
+
+        choice = input("Enter your choice (1-5): ")
+
+        if choice == "1":
+            first_name = input("Enter First Name: ")
+            last_name = input("Enter Last Name: ")
+            email = input("Enter Email: ")
+
+            new_record = {
+                "First_Name": first_name,
+                "Last_Name": last_name,
+                "Email": email
+            }
+
+            record_id = crm_connector.create_record(module, new_record)
+            if record_id:
+                print(f"Use this ID for further operations: {record_id}")
+
+        elif choice == "2":
+            record_id = input("Enter Record ID to retrieve: ")
+            crm_connector.read_record(module, record_id)
+
+        elif choice == "3":
+            record_id = input("Enter Record ID to update: ")
+            first_name = input("Enter new First Name: ")
+            last_name = input("Enter new Last Name: ")
+            email = input("Enter new Email: ")
+
+            updated_data = {
+                "First_Name": first_name,
+                "Last_Name": last_name,
+                "Email": email
+            }
+
+            crm_connector.update_record(module, record_id, updated_data)
+
+        elif choice == "4":
+            record_id = input("Enter Record ID to delete: ")
+            crm_connector.delete_record(module, record_id)
+
+        elif choice == "5":
+            print("Exiting CRM Manager. Goodbye!")
+            break
+
+        else:
+            print("Invalid choice. Enter a number between 1-5.")
